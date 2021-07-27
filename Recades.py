@@ -42,7 +42,7 @@ while True:
     else:
         print('Please enter a valid input')
 
-#get ID for track or abum
+#Get ID for track or abum
 if(response == 'track'):
     print('Enter a ' + response)
 else:
@@ -59,6 +59,7 @@ search = requests.get(BASE_URL + 'search', headers=headers,
     }).json()
 
 index = 0
+#Confirms search results with user
 while index < LIMIT:
     id = search['artists']['items'][index]['id']
     print("Result: " + search['artists']['items'][index]['name'])
@@ -68,3 +69,4 @@ while index < LIMIT:
         break
     else:
         index = index + 1
+
