@@ -1,7 +1,7 @@
 from tkinter import *
+from PIL import ImageTk, Image
 import requests
 import json
-from PIL import ImageTk, Image
 from requests.models import HTTPBasicAuth
 
 class TreeNode:
@@ -14,7 +14,46 @@ class Tree:
     def __init__(self):
         self.size = 0
         self.root = None
+    def insert(self, node, integer):
+        if self.root == None:
+            self.root = TreeNode(integer)
+            return
+        if node == None:
+            node = TreeNode(integer)
+            return node
+        elif node.data < integer:
+            node.right = self.insert(node.right, integer)
+        elif node.data > integer:
+            node.left = self.insert(node.left, integer)
+        elif node.data == integer:
+            return
+        
+        return node
 
+    def inorder(self, node):
+        if node != None:
+            if node.left != None:
+                self.inorder(node.left)
+            print(node.data)
+            if node.right != None:
+                self.inorder(node.right)
+
+class Graph:
+    def __init__(self):
+        self.adjList = {}
+        self.vCount = 0
+        self.indexMap = {}
+
+    def insert(self, V1, V2):
+        self.adjList[V1].append(V2)
+        self.adjList[V2].append(V1)
+        if V1 not in self.indexMap:
+            self.indexMap[V1] = self.vCount
+            self.vCount += 1
+        if V2 not in self.indexMap:
+            self.indexMap[V2] = self.vCount
+            self.vCount += 1
+        
 #Authentification for Spotify API
 CLIENT_ID = '6a7ad589234b45b2b9d53799c60562d8'
 CLIENT_SECRET = '76823465d7e24630815c65229ad276fa'
@@ -60,9 +99,6 @@ track_button = Radiobutton(root, variable=var, value='track', bg='#FF6A6A', high
 artist_button.place(x=310, y=300)
 album_button.place(x=310, y=325)
 track_button.place(x=310, y=350)
-artist_button.deselect()
-album_button.deselect()
-track_button.deselect()
 
 #Getting genres
 genres = requests.get(BASE_URL + 'recommendations/available-genre-seeds', headers=headers)
@@ -72,7 +108,7 @@ def goClick():
     response = str(var.get())
     query = str(field.get())
     
-    LIMIT = 5
+    LIMIT = 1
     search = requests.get(BASE_URL + 'search', headers=headers,
     params={
         'q' : query,
@@ -80,13 +116,18 @@ def goClick():
         'limit' : LIMIT
     }).json()
 
-    print(search)
+    id = str(search[response + 's']['items'][0]['id'])
 
-    #id = search[response + 's']['items'][0]['id']
+    id_json = requests.get(BASE_URL + response + 's/' + id, headers=headers,
+    params={
+        'id' : id,
+    }).json()
+
+    print(id_json['genres'])
 
 
-go = Button(root, text="GO!", padx=50, pady=50, command=goClick)
-go.pack()
+go = Button(root, text="GO!", padx=50, pady=3, command=goClick)
+go.place(x=370, y=427)
 
 
 root.mainloop()
