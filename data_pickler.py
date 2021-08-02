@@ -3,6 +3,7 @@ import requests
 import json
 import random
 from requests.models import HTTPBasicAuth
+from collections import deque, defaultdict
 
 class BTreeNode:
     def __init__(self, leaf=False, degree=0):
@@ -127,19 +128,31 @@ class BTree:
 #and making the recommendations based off of adjacency
 class Graph:
     def __init__(self):
-        self.adjList = {}
+        self.adjList = defaultdict(list)
         self.vCount = 0
         self.indexMap = {}
 
     def insert(self, V1, V2):
-        self.adjList[tuple(V1)] = [tuple(V2)]
-        self.adjList[tuple(V2)] = [tuple(V1)]
+        if V1 != V2 and V2 not in V1 and V2 not in V1:
+            self.adjList[tuple(V1)].append(tuple(V2))
+            self.adjList[tuple(V2)].append(tuple(V1))
         if tuple(V1) not in self.indexMap:
             self.indexMap[tuple(V1)] = self.vCount
             self.vCount += 1
         if tuple(V2) not in self.indexMap:
             self.indexMap[tuple(V2)] = self.vCount
             self.vCount += 1
+    
+    def Display_AdjList(self):
+        for item in self.adjList.items():
+            print(item)
+    def Display_Indices(self):
+        for item in self.indexMap.items():
+            print(item)
+    
+    def BFS(self):
+        visited = {}
+        queue = deque()
     
 
 #Authentification for Spotify API
@@ -202,10 +215,14 @@ playlists = {
     5 : "37i9dQZF1DX5Ejj0EkURtP"
 }
 
-genre = ['rock', 'pop', 'alternative', 'indie', 'hip hop']
-mseed_tracks = [[]]*6
-mseed_artists = [[]]*6
-for i in range(0, 6):
+mseed_tracks = []
+mseed_artists = []
+for i in range(6):
+    mseed_artists.append([])
+    mseed_tracks.append([])
+    
+
+for i in range(6):
     playlist = requests.get(BASE_URL + 'playlists/' + playlists[i] + '/tracks',
     headers=headers,
     params={
@@ -216,42 +233,84 @@ for i in range(0, 6):
     
     for x in playlist['items']:
         mseed_tracks[i].append(x['track']['id'])
-        mseed_artists[i].append(x['track']['album']['artists'][0]['id'])
+        mseed_artists[i].append(x['track']['album']['artists'][0]['name'])
 
-
-
-s_tracks = [[]] * 6
-s_artists = [[]] * 6
+s_tracks = [[]]
+s_artists = [[]]
+for i in range(6):
+    s_tracks.append([])
+    s_artists.append([])
 rec = []
 graph_seed = []
+
+rec_queue = deque()
+
 #selects random seeds for recommendations
 for i in range(6):
     for j in range(5):
-        s_tracks[i].append(random.choice(mseed_tracks[i]))
-        s_artists[i].append(random.choice(mseed_artists[i]))
+        randtrack = random.choice(mseed_tracks[i])
+        randartist = random.choice(mseed_artists[i])
+        s_tracks[i].append(randtrack)
+        s_artists[i].append(randartist)
 
+    #uses random seed to generate beginnings of graph
     rec.append(requests.get(BASE_URL + 'recommendations', headers=headers,
     params={
         'seed_artist' : s_artists[i],
-        'seed_genres' : genre,
         'seed_tracks' : s_tracks[i]
     }).json())
 
-    
+    #adding first recs to the rec queue!
+    rec_queue.append((rec[i]['tracks'][0]['artists'][0]['name'], rec[i]['tracks'][0]['artists'][0]['id']))
 
-    # search = requests.get(BASE_URL + 'search', headers=headers,
-    # params={
-    #     'q' : query,
-    #     'type' : response,
-    #     'limit' : LIMIT
-    # }).json()
+#Data gen loop that will create the graph for pickling!
+for i in range(14):
 
-    # id = str(search[response + 's']['items'][0]['id'])
+    #pops first element in the queue
+    artist_name, artist_id = rec_queue.popleft()
+
+    print('Recommendations for ' + artist_name + ":")
+
+    #gets seed tracks from the artist
+    top_track_rec = requests.get(BASE_URL + 'artists/' + artist_id + '/top-tracks',
+    headers=headers,
+    params={
+        'id' : artist_id,
+        'market' : 'US'
+    }).json()
+
+    top_tracks = []
+    for i in range(5):
+        top_tracks.append(top_track_rec['tracks'][i]['id'])
+
+    #recommendations to add to queue from popped artist
+    recs = requests.get(BASE_URL + 'recommendations', headers=headers,
+    params={
+        'seed_artists' : artist_id,
+        'seed_tracks' : top_tracks,
+        'limit' : 5
+    }).json()
+
+    #passing artists as a (name, id) tuple for better traversal
+    for x in recs['tracks']:
+        Recades_graph.insert((artist_name, artist_id), (x['artists'][0]['name'], x['artists'][0]['id']))
+        rec_queue.append((x['artists'][0]['name'], x['artists'][0]['id']))
+        print(x['artists'][0]['name'])
+
+Recades_graph.Display_AdjList()
+Recades_graph.Display_Indices()
+
+#Creating trees that will be populated from the graph
+#These trees will have node with degree 3 meaning
+#that the maximum number of keys in nodes will be 3*2 - 1
+sixties_tree = BTree(3)
+seventies_tree = BTree(3)
+eighties_tree = BTree(3)
+nineties_tree = BTree(3)
+thousands_tree = BTree(3)
+tens_tree = BTree(3)
+
+print(Recades_graph.adjList[Recades_graph.indexMap[0]])
 
 
-# sixties_tree = BTree(3)
-# seventies_tree = BTree()
-# eighties_tree = BTree()
-# nineties_tree = BTree()
-# thousands_tree = BTree()
-# tens_tree = BTree()
+
